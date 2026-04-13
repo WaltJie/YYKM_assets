@@ -159,6 +159,43 @@ var WebviewVideoPlayerImpl_hostInitialize = {
         break
       }
     }
+
+  'www.kankanews.com': async () => {
+    // 注入你提供的 XHR 拦截代码
+    const originalOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function(method, url) {
+        if (url.includes('https://kapi.kankanews.com/content/pc/tv/')) {
+            this.addEventListener('readystatechange', function() {
+                if (this.readyState === 4 && this.status === 200) {
+                    try {
+                        const response = JSON.parse(this.responseText);
+                        let modified = false;
+                        if (url.includes('/program/detail') && response.result) {
+                            response.result.is_shield = 0;
+                            response.result.is_review = 1;
+                            modified = true;
+                        }
+                        if (url.includes('/programs') && response.result?.programs) {
+                            response.result.programs.forEach(program => {
+                                program.is_shield = 0;
+                                program.is_review = 1;
+                                program.can_review = 1;
+                                modified = true;
+                            });
+                        }
+                        if (modified) {
+                            Object.defineProperty(this, 'responseText', {
+                                value: JSON.stringify(response),
+                                writable: false
+                            });
+                        }
+                    } catch (e) { console.error(e); }
+                }
+            });
+        }
+        return originalOpen.apply(this, arguments);
+    };
+  },
   },
 
   "web.guangdianyun.tv": async () => {
